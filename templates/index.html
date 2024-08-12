@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Key-Value Store</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .form-group button:hover {
+            background-color: #218838;
+        }
+        .item-list {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .item span {
+            margin-right: 10px;
+        }
+        .item .delete, .item .update {
+            background-color: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .item .update {
+            background-color: #007bff;
+        }
+        .item .delete:hover {
+            background-color: #c82333;
+        }
+        .item .update:hover {
+            background-color: #0056b3;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgb(0,0,0); /* Fallback color */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto; /* 5% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more or less, depending on screen size */
+            max-width: 400px;
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .modal .form-group {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Key-Value Store</h1>
+        
+        <div class="form-group">
+            <label for="keyInput">KEY</label>
+            <input type="text" id="keyInput" placeholder="Enter key">
+        </div>
+
+        <div class="form-group">
+            <label for="valueInput">VALUE</label>
+            <input type="text" id="valueInput" placeholder="Enter value">
+        </div>
+
+        <div class="form-group">
+            <button id="submitItem">Submit</button>
+        </div>
+
+        <div id="itemList" class="item-list"></div>
+    </div>
+
+    <!-- The Modal -->
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Update Value</h2>
+            <div class="form-group">
+                <label for="updateValueInput">New Value</label>
+                <input type="text" id="updateValueInput" placeholder="Enter new value">
+            </div>
+            <div class="form-group">
+                <button id="confirmUpdate">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentKey = '';
+
+        document.getElementById('submitItem').addEventListener('click', function() {
+            const key = document.getElementById('keyInput').value;
+            const value = document.getElementById('valueInput').value;
+
+            if (key && value) {
+                fetch('/items', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ key: key, value: value })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    loadItems();
+                    document.getElementById('keyInput').value = '';
+                    document.getElementById('valueInput').value = '';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            } else {
+                alert('Please enter both key and value.');
+            }
+        });
+
+        function loadItems() {
+            fetch('/items')
+                .then(response => response.json())
+                .then(data => {
+                    const itemList = document.getElementById('itemList');
+                    itemList.innerHTML = '';
+                    data.forEach(item => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'item';
+                        itemDiv.innerHTML = `
+                            <span>Keyname: ${item[0]} Value: ${item[1]}</span>
+                            <button class="update" onclick="openUpdateModal('${item[0]}')">Update</button>
+                            <button class="delete" onclick="deleteItem('${item[0]}')">Delete</button>
+                        `;
+                        itemList.appendChild(itemDiv);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function openUpdateModal(key) {
+            currentKey = key;
+            document.getElementById('updateModal').style.display = "block";
+        }
+
+        document.getElementById('confirmUpdate').addEventListener('click', function() {
+            const newValue = document.getElementById('updateValueInput').value;
+
+            if (newValue) {
+                fetch(`/items/${currentKey}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ value: newValue })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    document.getElementById('updateModal').style.display = "none";
+                    loadItems();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            } else {
+                alert('Please enter a value.');
+            }
+        });
+
+        function deleteItem(key) {
+            fetch(`/items/${key}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                loadItems();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // Close the modal when the user clicks on <span> (x)
+        document.querySelector('.close').addEventListener('click', function() {
+            document.getElementById('updateModal').style.display = "none";
+        });
+
+        // Close the modal when the user clicks anywhere outside of the modal
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('updateModal')) {
+                document.getElementById('updateModal').style.display = "none";
+            }
+        };
+
+        // Load items on page load
+        loadItems();
+    </script>
+</body>
+</html>
