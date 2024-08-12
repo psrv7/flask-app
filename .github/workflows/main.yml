@@ -35,4 +35,4 @@ jobs:
       - name: Build and push Docker image
         run: |
           docker build -t psrv3/flask-app:latest .
-          docker push ypsrv3/flask-app:latest
+          docker push psrv3/flask-app:latest
